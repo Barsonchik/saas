@@ -1,0 +1,16 @@
+shadowsocks-manager/
+├── Dockerfile
+├── docker-compose.yml
+├── requirements.txt
+├── .env.example
+├── nginx/
+│   └── nginx.conf
+├── api/
+│   ├── api.py
+│   ├── config.py
+│   ├── config_generator.py
+│   ├── traffic_monitor.py
+│   └── gunicorn.conf.py
+├── templates/
+│   └── index.html
+└── entrypoint.sh

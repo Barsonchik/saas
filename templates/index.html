@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shadowsocks Manager</title>
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- JavaScript Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+</head>
+<body>
+    <!-- Container -->
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div>
+                <h1><i class="fas fa-shield-alt"></i> Shadowsocks Manager</h1>
+                <p class="subtitle">Advanced management with per-user services and real-time monitoring</p>
+            </div>
+            <div class="header-controls">
+                <div class="traffic-live">
+                    <div class="traffic-dot" id="live-indicator"></div>
+                    <small id="live-status">Real-time: Active</small>
+                </div>
+                <button class="btn" onclick="openNotifications()" id="notifications-btn">
+                    <i class="fas fa-bell"></i> Notifications
+                    <span class="notification-badge" id="notification-count" style="display: none;">0</span>
+                </button>
+                <button class="refresh-btn" onclick="loadDashboard()" title="Refresh">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+                <div id="server-status" class="server-status status-online">
+                    <i class="fas fa-circle"></i> Online
+                </div>
+            </div>
+        </div>
+
+        <!-- Notifications Panel -->
+        <div class="notifications-panel" id="notifications-panel" style="display: none;">
+            <div class="notifications-header">
+                <h3><i class="fas fa-bell"></i> Notifications</h3>
+            </div>
+            <div id="notifications-list" class="notifications-list">
+                <div class="no-notifications">
+                    <i class="fas fa-bell-slash"></i>
+                    <p>No notifications</p>
+                </div>
+            </div>
+            <div class="notifications-footer">
+                <button class="btn btn-sm" onclick="checkNotifications()">
+                    <i class="fas fa-sync"></i> Check Now
+                </button>
+                <button class="btn btn-sm btn-secondary" onclick="clearNotifications()">
+                    <i class="fas fa-trash"></i> Clear All
+                </button>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab('dashboard')" data-tab="dashboard">
+                <i class="fas fa-tachometer-alt"></i> Dashboard
+            </div>
+            <div class="tab" onclick="switchTab('users')" data-tab="users">
+                <i class="fas fa-users"></i> Users
+            </div>
+            <div class="tab" onclick="switchTab('services')" data-tab="services">
+                <i class="fas fa-server"></i> Services
+            </div>
+            <div class="tab" onclick="switchTab('monitoring')" data-tab="monitoring">
+                <i class="fas fa-chart-line"></i> Monitoring
+            </div>
+            <div class="tab" onclick="switchTab('export')" data-tab="export">
+                <i class="fas fa-download"></i> Export
+            </div>
+        </div>
+
+        <!-- Tab Contents -->
+        <!-- Dashboard Tab -->
+        <div class="tab-content active" id="dashboard-tab">
+            <!-- Server Stats -->
+            <div class="card">
+                <h2><i class="fas fa-chart-line"></i> Server Statistics</h2>
+                <div class="stats-grid" id="stats">
+                    <!-- Stats will be loaded dynamically -->
+                </div>
+                <!-- Admin Controls -->
+                <div class="service-controls admin-controls">
+                    <button class="btn btn-info" onclick="initializeAdmin()">
+                        <i class="fas fa-cogs"></i> Initialize Admin
+                    </button>
+                    <button class="btn btn-success" onclick="syncServices()">
+                        <i class="fas fa-sync"></i> Sync Services
+                    </button>
+                    <button class="btn btn-warning" onclick="restartAllServices()">
+                        <i class="fas fa-redo"></i> Restart All Services
+                    </button>
+                </div>
+            </div>
+
+            <!-- Services Overview -->
+            <div class="card">
+                <h2><i class="fas fa-server"></i> Services Overview</h2>
+                <div id="services-overview">
+                    <!-- Services will be loaded dynamically -->
+                </div>
+            </div>
+
+            <!-- Recent Activity -->
+            <div class="card">
+                <h2><i class="fas fa-history"></i> Recent Activity</h2>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>User</th>
+                                <th>Action</th>
+                                <th>Details</th>
+                            </tr>
+                        </thead>
+                        <tbody id="activity-log">
+                            <!-- Activity will be loaded dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Users Tab -->
+        <div class="tab-content" id="users-tab">
+            <div class="card">
+                <div class="card-header">
+                    <h2><i class="fas fa-users"></i> User Management</h2>
+                    <button class="btn" onclick="showAddUserModal()">
+                        <i class="fas fa-plus"></i> Add User
+                    </button>
+                </div>
+                
+                <div class="table-container">
+                    <table id="users-table">
+                        <thead>
+                            <tr>
+                                <th>Username</th>
+                                <th>Port</th>
+                                <th>Service</th>
+                                <th>Traffic Usage</th>
+                                <th>Expires</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-body">
+                            <!-- Users will be loaded dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Services Tab -->
+        <div class="tab-content" id="services-tab">
+            <div class="card">
+                <div class="card-header">
+                    <h2><i class="fas fa-server"></i> Service Management</h2>
+                    <div class="service-controls">
+                        <button class="btn btn-success" onclick="syncServices()">
+                            <i class="fas fa-sync"></i> Sync Services
+                        </button>
+                        <button class="btn btn-info" onclick="reloadAllServices()">
+                            <i class="fas fa-redo"></i> Reload All
+                        </button>
+                        <button class="btn btn-warning" onclick="checkAllServices()">
+                            <i class="fas fa-search"></i> Check Status
+                        </button>
+                        <button class="btn btn-danger" onclick="restartAllServices()">
+                            <i class="fas fa-redo"></i> Restart All
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="services-status">
+                    <!-- Services status will be loaded dynamically -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Monitoring Tab -->
+        <div class="tab-content" id="monitoring-tab">
+            <div class="card">
+                <h2><i class="fas fa-chart-line"></i> Real-time Traffic Monitoring</h2>
+                <div class="chart-container">
+                    <canvas id="trafficChart"></canvas>
+                </div>
+                
+                <div class="live-traffic-container">
+                    <h3><i class="fas fa-sync-alt"></i> Live Updates</h3>
+                    <div id="live-traffic" class="live-traffic">
+                        <!-- Live traffic will be loaded dynamically -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2><i class="fas fa-history"></i> Traffic History (Last 7 Days)</h2>
+                <div class="chart-container">
+                    <canvas id="historyChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Export Tab -->
+        <div class="tab-content" id="export-tab">
+            <div class="card">
+                <h2><i class="fas fa-download"></i> Export Options</h2>
+                
+                <div class="export-options">
+                    <div class="export-option" onclick="exportAllConfigs()">
+                        <div class="export-icon">
+                            <i class="fas fa-file-archive"></i>
+                        </div>
+                        <h3>All Configurations</h3>
+                        <p>Download ZIP with all user configurations</p>
+                    </div>
+                    
+                    <div class="export-option" onclick="exportUsersCSV()">
+                        <div class="export-icon">
+                            <i class="fas fa-file-csv"></i>
+                        </div>
+                        <h3>Users CSV</h3>
+                        <p>Export user list as CSV file</p>
+                    </div>
+                    
+                    <div class="export-option" onclick="exportTrafficReport()">
+                        <div class="export-icon">
+                            <i class="fas fa-chart-bar"></i>
+                        </div>
+                        <h3>Traffic Report</h3>
+                        <p>Generate PDF traffic report</p>
+                    </div>
+                    
+                    <div class="export-option" onclick="backupDatabase()">
+                        <div class="export-icon">
+                            <i class="fas fa-database"></i>
+                        </div>
+                        <h3>Database Backup</h3>
+                        <p>Create full database backup</p>
+                    </div>
+                </div>
+                
+                <div class="automated-exports">
+                    <h3><i class="fas fa-cog"></i> Automated Exports</h3>
+                    <div class="export-settings">
+                        <div class="export-setting">
+                            <input type="checkbox" id="auto-backup" onchange="toggleAutoBackup()">
+                            <label for="auto-backup">Daily automatic backup</label>
+                        </div>
+                        <div class="export-setting">
+                            <input type="checkbox" id="auto-report" onchange="toggleAutoReport()">
+                            <label for="auto-report">Weekly traffic reports</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <!-- Add User Modal -->
+    <div id="addUserModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <!-- Form will be loaded dynamically -->
+        </div>
+    </div>
+
+    <!-- Config Modal -->
+    <div id="configModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <!-- Config will be loaded dynamically -->
+        </div>
+    </div>
+
+    <!-- Service Info Modal -->
+    <div id="serviceInfoModal" class="modal modal-lg" style="display: none;">
+        <div class="modal-content">
+            <!-- Service info will be loaded dynamically -->
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast"></div>
+
+    <!-- JavaScript Files -->
+    <script src="/static/js/config.js"></script>
+    <script src="/static/js/app.js"></script>
+    <script src="/static/js/modals.js"></script>
+    <script src="/static/js/services.js"></script>
+    <script src="/static/js/notifications.js"></script>
+    <script src="/static/js/export.js"></script>
+</body>
+</html>

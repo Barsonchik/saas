@@ -1,0 +1,73 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:6
+    container_name: shadowsocks-mongodb
+    restart: always
+    volumes:
+      - mongodb_data:/data/db
+      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-mongopassword123}
+    networks:
+      - ss-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  api:
+    build: .
+    container_name: shadowsocks-api
+    restart: always
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+      - "5000:5000"
+    environment:
+      - MONGO_URI=mongodb://${MONGO_ROOT_USER:-admin}:${MONGO_ROOT_PASSWORD:-mongopassword123}@mongodb:27017/${MONGO_DB:-shadowsocks_db}?authSource=admin
+      - MONGO_DB=${MONGO_DB:-shadowsocks_db}
+      - SS_SERVER_IP=${SS_SERVER_IP:-155.212.224.2}
+      - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin_password}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-your-secret-key-change-this-in-production}
+      - FLASK_ENV=production
+      - FLASK_DEBUG=${FLASK_DEBUG:-false}
+    volumes:
+      - ./api:/app/api
+      - ./templates:/app/templates
+      - ./logs:/var/log
+      - ./ssl:/etc/ssl/apache2:ro
+    networks:
+      - ss-network
+    command: gunicorn -c api/gunicorn.conf.py api.api:app
+
+  traffic-monitor:
+    build: .
+    container_name: shadowsocks-monitor
+    restart: always
+    depends_on:
+      - mongodb
+      - api
+    environment:
+      - MONGO_URI=mongodb://${MONGO_ROOT_USER:-admin}:${MONGO_ROOT_PASSWORD:-mongopassword123}@mongodb:27017/${MONGO_DB:-shadowsocks_db}?authSource=admin
+    volumes:
+      - ./api:/app/api
+      - /proc:/host/proc:ro
+    networks:
+      - ss-network
+    command: python api/traffic_monitor.py
+    pid: host
+
+volumes:
+  mongodb_data:
+
+networks:
+  ss-network:
+    driver: bridge

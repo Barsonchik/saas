@@ -1,0 +1,20 @@
+shadowsocks-manager/
+├── templates/
+│   └── index.html                 # Главный HTML файл
+├── static/
+│   ├── css/
+│   │   └── style.css             # Основные стили
+│   └── js/
+│       ├── config.js             # Конфигурация приложения
+│       ├── app.js                # Основная логика
+│       ├── modals.js             # Управление модальными окнами
+│       ├── services.js           # Управление службами
+│       ├── notifications.js      # Управление уведомлениями
+│       └── export.js             # Функции экспорта
+└── ├── api/
+│   ├── api.py
+│   ├── config.py
+│   ├── config_generator.py
+│   ├── traffic_monitor.py
+│   └── gunicorn.conf.py
+└── entrypoint.sh
