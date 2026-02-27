@@ -3,7 +3,7 @@ import subprocess
 import logging
 from pymongo import MongoClient
 from datetime import datetime, timezone
-from config import Config
+from api.config import Config
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("traffic")
