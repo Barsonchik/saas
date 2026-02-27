@@ -186,7 +186,7 @@ echo "Note:           Mount host root with -v /:/host:ro"
 echo "=========================================="
 echo ""
 
-# Запускаем Flask приложение напрямую
+# Запускаем Flask приложение как модуль пакета
 echo "Starting Flask application..."
 cd /app
-exec python api/api.py
+exec python -m api.api
