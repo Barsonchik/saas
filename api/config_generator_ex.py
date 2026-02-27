@@ -5,7 +5,7 @@ import logging
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import List, Dict
-from config import Config
+from api.config import Config
 import secrets
 import base64
 import subprocess
