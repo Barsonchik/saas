@@ -36,7 +36,7 @@ def stats():
         pass
 
     return jsonify({'success': True, 'stats': {
-        'server': {'ip': Config.SS_SERVER_IP, 'hostname': os.uname().nodename if hasattr(os, 'uname') else 'docker-container', 'db_status': 'connected' if db is not None else 'disconnected', 'manager_status': 'connected' if manager is not None else 'disconnected'},
+        'server': {'ip': Config.SS_SERVER_IP, 'hostname': os.uname().nodename if hasattr(os, 'uname') else 'docker-container', 'db_status': 'connected' if db else 'disconnected', 'manager_status': 'connected' if manager else 'disconnected'},
         'users': {'total': total_users, 'active': active_users},
         'traffic': {'total_used_gb': round(total_used / 1024**3, 2), 'total_limit_gb': round(total_limit / 1024**3, 2)},
         'system': {'cpu_usage': round(cpu_usage, 1), 'memory_usage': round(memory.percent, 1)},
@@ -61,4 +61,4 @@ def traffic_history():
 @stats_bp.route('/api/health', methods=['GET'])
 def health():
     db_status = 'connected' if db is not None else 'disconnected'
-    return jsonify({'status': 'healthy', 'timestamp': datetime.utcnow().isoformat(), 'services': {'mongodb': db_status, 'manager': 'connected' if manager is not None else 'disconnected'}})
+    return jsonify({'status': 'healthy', 'timestamp': datetime.utcnow().isoformat(), 'services': {'mongodb': db_status, 'manager': 'connected' if manager else 'disconnected'}})
