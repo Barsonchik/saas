@@ -1,46 +1,10 @@
-# Остановите старый контейнер
-docker stop ss-manager-new 2>/dev/null
-docker rm ss-manager-new 2>/dev/null
-
 docker build -t shadowsocks-manager:sync .
 
-# Запустите с публичным IP
-docker run -d \
-  --name ss-manager-new \
-  -p 5000:5000 \
-  -v /etc/shadowsocks-libev:/etc/shadowsocks-libev:rw \
-  -e MONGO_URI="mongodb://admin:firefly2007@155.212.224.2:27017/shadowsocks_db?authSource=admin&directConnection=true" \
-  -e MONGO_DB="shadowsocks_db" \
-  -e SHADOWSOCKS_CONFIG="/etc/shadowsocks-libev/config.json" \
-  shadowsocks-manager:sync
-
-# Проверьте логи
-sleep 5
-docker logs ss-manager-new --tail 30
-
 docker run -d \
   --name ss-manager \
   --privileged \
   --cap-add=SYS_ADMIN \
-  -p 5000:5000 \
-  -v /sys/fs/cgroup:/sys/fs/cgroup:ro \
-  -v /run/systemd/system:/run/systemd/system \
-  -v /etc/systemd/system:/etc/systemd/system:rw \
-  -v /usr/bin/systemctl:/usr/bin/systemctl \
-  -v /usr/bin/systemd:/usr/bin/systemd \
-  -v /etc/shadowsocks-libev:/etc/shadowsocks-libev:rw \
-  -v /var/log/shadowsocks-manager:/var/log/shadowsocks-manager \
-  -e MONGO_URI="mongodb://admin:firefly2007@155.212.224.2:27017/shadowsocks_db?authSource=admin&directConnection=true" \
-  -e MONGO_DB="shadowsocks_db" \
-  -e SHADOWSOCKS_CONFIG="/etc/shadowsocks-libev/config.json" \
-  shadowsocks-manager:sync
-
-  docker stop ss-manager 2>/dev/null; docker rm ss-manager 2>/dev/null
-
-docker run -d \
-  --name ss-manager \
-  --privileged \
-  --cap-add=SYS_ADMIN \
+  --pid=host \
   --network host \
   -v /:/host:ro \
   -v /run/systemd/system:/run/systemd/system \
