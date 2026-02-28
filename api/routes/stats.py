@@ -13,33 +13,69 @@ stats_bp = Blueprint('stats', __name__)
 
 @stats_bp.route('/api/stats', methods=['GET'])
 def stats():
-    total_users = db.users.count_documents({}) if db is not None else 0
+    total_users = 0
     active_users = 0
-    total_used = total_limit = 0
+    total_used = 0
+    total_limit = 0
 
-    if db is not None:
-        now = datetime.utcnow()
-        active_users = db.users.count_documents({'enable': True, '$or': [{'expires_at': {'$gt': now}}, {'expires_at': {'$exists': False}}]})
-        traffic_stats = list(db.users.aggregate([{'$group': {'_id': None, 'total_used': {'$sum': '$traffic_used'}, 'total_limit': {'$sum': '$traffic_limit'}}}]))
-        if traffic_stats:
-            total_used = traffic_stats[0]['total_used']
-            total_limit = traffic_stats[0]['total_limit']
-
-    cpu_usage = psutil.cpu_percent(interval=0.2)
-    memory = psutil.virtual_memory()
-
-    admin_service_status = 'unknown'
     try:
-        result = subprocess.run(['systemctl', 'is-active', 'shadowsocks.service'], capture_output=True, text=True)
-        admin_service_status = 'running' if result.returncode == 0 else 'stopped'
+        if db is not None:
+            total_users = db.users.count_documents({})
+            now = datetime.utcnow()
+            active_users = db.users.count_documents({'enable': True, '$or': [{'expires_at': {'$gt': now}}, {'expires_at': {'$exists': False}}]})
+            traffic_stats = list(db.users.aggregate([{'$group': {'_id': None, 'total_used': {'$sum': '$traffic_used'}, 'total_limit': {'$sum': '$traffic_limit'}}}]))
+            if traffic_stats:
+                total_used = traffic_stats[0].get('total_used', 0)
+                total_limit = traffic_stats[0].get('total_limit', 0)
     except Exception:
         pass
 
+    cpu_usage = 0
+    memory_usage = 0
+    hostname = 'unknown'
+    
+    try:
+        cpu_usage = psutil.cpu_percent(interval=0.2)
+    except Exception:
+        pass
+    
+    try:
+        memory = psutil.virtual_memory()
+        memory_usage = memory.percent
+    except Exception:
+        pass
+
+    try:
+        hostname = os.uname().nodename if hasattr(os, 'uname') else 'docker-container'
+    except Exception:
+        hostname = 'docker-container'
+
+    admin_service_status = 'unknown'
+    active_services = 0
+    total_services = 0
+    
+    try:
+        if manager and hasattr(manager, 'get_all_services_status'):
+            services_result = manager.get_all_services_status()
+            if services_result.get('success'):
+                total_services = services_result.get('total_services', 0)
+                user_services = services_result.get('user_services', [])
+                active_services = sum(1 for s in user_services if s.get('active', False))
+    except Exception:
+        pass
+    
+    try:
+        result = subprocess.run(['systemctl', 'is-active', 'shadowsocks.service'], capture_output=True, text=True, timeout=5)
+        admin_service_status = 'running' if result.returncode == 0 else 'stopped'
+    except Exception:
+        admin_service_status = 'unavailable'
+
     return jsonify({'success': True, 'stats': {
-        'server': {'ip': Config.SS_SERVER_IP, 'hostname': os.uname().nodename if hasattr(os, 'uname') else 'docker-container', 'db_status': 'connected' if db else 'disconnected', 'manager_status': 'connected' if manager else 'disconnected'},
+        'server': {'ip': Config.SS_SERVER_IP, 'hostname': hostname, 'db_status': 'connected' if db is not None else 'disconnected', 'manager_status': 'connected' if manager is not None else 'disconnected'},
         'users': {'total': total_users, 'active': active_users},
         'traffic': {'total_used_gb': round(total_used / 1024**3, 2), 'total_limit_gb': round(total_limit / 1024**3, 2)},
-        'system': {'cpu_usage': round(cpu_usage, 1), 'memory_usage': round(memory.percent, 1)},
+        'system': {'cpu_usage': round(cpu_usage, 1), 'memory_usage': round(memory_usage, 1)},
+        'services': {'total_services': total_services, 'active_services': active_services},
         'admin_service': admin_service_status,
     }})
 

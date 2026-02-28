@@ -207,7 +207,16 @@ class HostSystemctlManager:
                 }
             
             # Проверяем активность через pgrep
-            pgrep_cmd = ['chroot', '/host', 'pgrep', '-f', f'ss-server.*{service_name.replace(".service", "")}']
+            # Извлекаем username из имени сервиса: shadowsocks-murzik.service -> murzik
+            username = service_name.replace("shadowsocks-", "").replace(".service", "")
+            
+            # Для admin используем config.json, для других - config-{username}.json
+            if username == "shadowsocks":
+                config_pattern = "config.json"
+            else:
+                config_pattern = f"config-{username}.json"
+            
+            pgrep_cmd = ['chroot', '/host', 'pgrep', '-f', f'ss-server.*{config_pattern}']
             pgrep_result = subprocess.run(pgrep_cmd, capture_output=True, text=True)
             is_active = pgrep_result.returncode == 0
             
